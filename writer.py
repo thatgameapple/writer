@@ -39,6 +39,43 @@ def build_tag_tree(all_files: list) -> dict:
     return tree
 
 
+class SettingsScreen(ModalScreen):
+    AUTO_FOCUS = "#path-input"
+    CSS = """
+    SettingsScreen { align: center middle; }
+    #settings-box {
+        width: 70; height: 10;
+        background: #0d0d0d;
+        border: solid #2a2a2a;
+        padding: 1 2;
+    }
+    #settings-title { height: 1; color: #555555; margin-bottom: 1; }
+    #settings-current { height: 1; color: #3a3a3a; margin-bottom: 1; }
+    #path-input {
+        background: #141414;
+        color: #d0d0d0;
+        border: solid #2a2a2a;
+    }
+    #settings-hint { height: 1; color: #333333; margin-top: 1; }
+    """
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="settings-box"):
+            yield Label("  storage path", id="settings-title")
+            yield Label(f"  current: {SAVE_DIR}", id="settings-current")
+            yield Input(value=str(SAVE_DIR), id="path-input")
+            yield Label("  enter to confirm  esc to cancel", id="settings-hint")
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        new_path = event.value.strip()
+        if new_path:
+            self.dismiss(new_path)
+
+    def on_key(self, event) -> None:
+        if event.key == "escape":
+            self.dismiss(None)
+
+
 class FileListScreen(ModalScreen):
     AUTO_FOCUS = "#tag-list"
     CSS = """
@@ -87,9 +124,12 @@ class FileListScreen(ModalScreen):
         tl = self.query_one("#tag-list", ListView)
         tl.clear()
         tl.append(ListItem(Label("  all"), name="all"))
-        for tag in sorted(set(t.split("/")[0] for t in self._tag_tree)):
+        for tag in sorted(self._tag_tree.keys()):
+            depth = tag.count("/")
+            indent = "  " + "    " * depth
+            display = tag.split("/")[-1]
             count = len(self._tag_tree.get(tag, []))
-            tl.append(ListItem(Label(f"  # {tag}  {count}"), name=f"tag:{tag}"))
+            tl.append(ListItem(Label(f"{indent}# {display}  {count}"), name=f"tag:{tag}"))
 
     def _load_files(self, files: list) -> None:
         fl = self.query_one("#file-list", ListView)
@@ -124,10 +164,11 @@ class WriterApp(App):
     CSS = """
     Screen { background: #0d0d0d; }
 
-    ScrollBar { display: none !important; }
-    ScrollBarCorner { display: none !important; }
-    * > ScrollBar { display: none !important; }
-    * > ScrollBarCorner { display: none !important; }
+    ScrollBar { display: none; }
+    ScrollBarCorner { display: none; }
+    Vertical { scrollbar-size: 0 0; }
+    Center { scrollbar-size: 0 0; }
+    Screen { scrollbar-size: 0 0; }
 
     #editor-wrap {
         align: center top;
@@ -140,6 +181,7 @@ class WriterApp(App):
         border: none;
         padding: 4 0;
         width: 80;
+        scrollbar-size: 0 0;
     }
 
     TextArea:focus { border: none; }
@@ -190,6 +232,7 @@ class WriterApp(App):
         Binding("ctrl+e", "export_clipboard", "copy all", show=False),
         Binding("ctrl+l", "open_list", "files", show=False),
         Binding("ctrl+f", "toggle_search", "search", show=False),
+        Binding("ctrl+p", "open_settings", "path", show=False),
         Binding("escape", "close_search", "", show=False),
     ]
 
@@ -327,6 +370,17 @@ class WriterApp(App):
                 self.query_one("#editor").focus()
                 self._update_status()
         self.push_screen(FileListScreen(), handle)
+
+    def action_open_settings(self) -> None:
+        def handle(new_path: str | None):
+            if new_path:
+                global SAVE_DIR
+                p = pathlib.Path(new_path).expanduser()
+                p.mkdir(parents=True, exist_ok=True)
+                CONFIG_FILE.write_text(str(p), encoding="utf-8")
+                SAVE_DIR = p
+                self.notify(f"saved to: {p}", timeout=3)
+        self.push_screen(SettingsScreen(), handle)
 
     def action_toggle_search(self) -> None:
         self._search_visible = not self._search_visible
