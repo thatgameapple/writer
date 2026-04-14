@@ -1,6 +1,11 @@
 # purple-soul
 
-A minimalist terminal writing tool for geeks.
+> A minimalist writing tool for terminal geeks.
+
+No Markdown preview. No sidebar. No distraction.  
+Just you, your words, and a black screen.
+
+Built with [Textual](https://github.com/Textualize/textual). Inspired by the idea that writing should feel like thinking — quiet, focused, and fast.
 
 ## Install
 
@@ -27,4 +32,13 @@ purple-soul
 
 ## Tags
 
-Write `#tag` or `#parent/child` in your text to organize files.
+Write `#tag` or `#parent/child` anywhere in your text to organize files — like [flomo](https://flomoapp.com), but in your terminal.
+
+## Design
+
+- Pure black background (`#0d0d0d`)
+- Terminal default text color
+- Purple accent (`#7c6af7`)
+- Breathing status bar
+- Auto-save every 30 seconds
+- Files saved as plain `.txt`
