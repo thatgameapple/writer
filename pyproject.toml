@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "purple-soul"
-version = "0.1.0"
+version = "0.1.3"
 description = "A minimalist terminal writing tool for geeks"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -16,4 +16,4 @@ dependencies = [
 purple-soul = "purple_soul:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["purple_soul"]
+include = ["purple_soul.py"]

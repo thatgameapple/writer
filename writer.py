@@ -117,8 +117,10 @@ class WriterApp(App):
     CSS = """
     Screen { background: #0d0d0d; }
 
-    ScrollBar { display: none; }
-    ScrollBarCorner { display: none; }
+    ScrollBar { display: none; visibility: hidden; }
+    ScrollBarCorner { display: none; visibility: hidden; }
+    TextArea > * ScrollBar { display: none; visibility: hidden; }
+    TextArea > * ScrollBarCorner { display: none; visibility: hidden; }
 
     #editor-wrap {
         align: center top;
