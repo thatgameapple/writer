@@ -173,6 +173,7 @@ class WriterApp(App):
     #editor-wrap {
         align: center top;
         background: #0d0d0d;
+        height: 1fr;
     }
 
     TextArea {
