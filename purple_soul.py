@@ -182,15 +182,19 @@ class FileListScreen(ModalScreen):
             focused = self.focused
             if focused and focused.id == "tag-list":
                 tl = self.query_one("#tag-list", ListView)
-                item = tl.highlighted_child
-                if item and item.name and item.name.startswith("tag:"):
-                    tag = item.name[4:]
-                    if tag in self._pinned:
-                        self._pinned.remove(tag)
-                    else:
-                        self._pinned.insert(0, tag)
-                    save_pinned(self._pinned)
-                    self._load_tags()
+                idx = tl.index
+                if idx is not None:
+                    children = list(tl.query("ListItem"))
+                    if 0 <= idx < len(children):
+                        item = children[idx]
+                        if item.name and item.name.startswith("tag:"):
+                            tag = item.name[4:]
+                            if tag in self._pinned:
+                                self._pinned.remove(tag)
+                            else:
+                                self._pinned.insert(0, tag)
+                            save_pinned(self._pinned)
+                            self._load_tags()
 
 
 class WriterApp(App):
