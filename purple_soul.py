@@ -247,6 +247,7 @@ class WriterApp(App):
     def __init__(self):
         super().__init__()
         self._current_file: pathlib.Path | None = None
+        self._dirty: bool = False
         self._search_visible = False
         self._last_keyword: str = ""
 
@@ -286,6 +287,7 @@ class WriterApp(App):
         self.query_one("#statusbar", Label).update(f"  {fname}  ·  {count} chars  ·  {now}")
 
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        self._dirty = True
         self._update_status()
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
@@ -296,6 +298,7 @@ class WriterApp(App):
             except Exception:
                 return
             self._current_file = path
+            self._dirty = False
             editor = self.query_one("#editor", TextArea)
             editor.load_text(content)
             self.action_close_search()
@@ -356,6 +359,7 @@ class WriterApp(App):
 
     def action_new_file(self) -> None:
         self._current_file = None
+        self._dirty = False
         self.query_one("#editor", TextArea).load_text("")
         self.query_one("#editor").focus()
         self._update_status()
@@ -364,7 +368,7 @@ class WriterApp(App):
         self._do_save()
 
     def _auto_save(self) -> None:
-        if self.query_one("#editor", TextArea).text.strip():
+        if self._dirty and self.query_one("#editor", TextArea).text.strip():
             self._do_save(silent=True)
 
     def _do_save(self, silent=False) -> None:
@@ -377,6 +381,7 @@ class WriterApp(App):
             name = name if name else datetime.now().strftime("%Y%m%d_%H%M%S")
             self._current_file = SAVE_DIR / f"{name}.txt"
         self._current_file.write_text(content, encoding="utf-8")
+        self._dirty = False
         self._update_status()
         if not silent:
             self.notify("saved.", timeout=2)
@@ -397,6 +402,7 @@ class WriterApp(App):
                 except Exception:
                     return
                 self._current_file = p
+                self._dirty = False
                 self.query_one("#editor", TextArea).load_text(content)
                 self.query_one("#editor").focus()
                 self._update_status()
