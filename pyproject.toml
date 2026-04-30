@@ -8,9 +8,15 @@ version = "0.2.13"
 description = "A minimalist terminal writing tool for geeks"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [{name = "thatgameapple"}]
 dependencies = [
     "textual>=8.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/thatgameapple/purple-soul"
+Repository = "https://github.com/thatgameapple/purple-soul"
+Issues = "https://github.com/thatgameapple/purple-soul/issues"
 
 [project.scripts]
 purple-soul = "purple_soul:main"
