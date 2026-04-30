@@ -8,6 +8,8 @@ from textual.screen import ModalScreen
 from datetime import datetime
 import pathlib
 import re
+import shutil
+import time
 
 CONFIG_FILE = pathlib.Path.home() / ".config" / "purple-soul" / "config"
 PINNED_FILE = pathlib.Path.home() / ".config" / "purple-soul" / "pinned_tags"
@@ -138,10 +140,11 @@ class FileListScreen(ModalScreen):
         )
         self._tag_tree = build_tag_tree(self._all_files)
         self._pinned: list[str] = load_pinned()
+        self._pending_delete: tuple[pathlib.Path, float] | None = None
 
     def compose(self) -> ComposeResult:
         with Vertical(id="filelist-box"):
-            yield Label("  tab  enter  esc    p = pin tag", id="filelist-hint")
+            yield Label("  tab  enter  esc    p = pin tag    d = delete", id="filelist-hint")
             with Horizontal():
                 yield TagListView(id="tag-list")
                 yield ListView(id="file-list")
@@ -174,8 +177,8 @@ class FileListScreen(ModalScreen):
         fl = self.query_one("#file-list", ListView)
         fl.clear()
         for f in files:
-            mtime = datetime.fromtimestamp(f.stat().st_mtime).strftime("%m-%d %H:%M")
-            fl.append(ListItem(Label(f"  {f.stem:<32} {mtime}"), name=str(f)))
+            mtime = datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+            fl.append(ListItem(Label(f"  {f.stem[:26]:<26}  {mtime}"), name=str(f)))
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         name = event.item.name or ""
@@ -207,12 +210,14 @@ class FileListScreen(ModalScreen):
         if event.key == "escape":
             self.dismiss(None)
         elif event.key == "tab":
+            self._pending_delete = None
             focused = self.focused
             if focused and focused.id == "tag-list":
                 self.query_one("#file-list").focus()
             else:
                 self.query_one("#tag-list").focus()
         elif event.key == "p":
+            self._pending_delete = None
             tl = self.query_one("#tag-list", TagListView)
             idx = tl.index
             if idx is not None:
@@ -227,6 +232,58 @@ class FileListScreen(ModalScreen):
                             self._pinned.insert(0, tag)
                         save_pinned(self._pinned)
                         self._load_tags()
+        elif event.key == "d":
+            self._handle_delete_key()
+        else:
+            self._pending_delete = None
+
+    def _handle_delete_key(self) -> None:
+        focused = self.focused
+        if not focused or focused.id != "file-list":
+            return
+        fl = self.query_one("#file-list", ListView)
+        idx = fl.index
+        if idx is None:
+            return
+        children = list(fl.children)
+        if not (0 <= idx < len(children)):
+            return
+        item = children[idx]
+        if not item.name:
+            return
+        target = pathlib.Path(item.name)
+        now = time.time()
+        if self._pending_delete and self._pending_delete[0] == target and now < self._pending_delete[1]:
+            self._pending_delete = None
+            try:
+                self._move_to_trash(target)
+            except Exception as e:
+                self.notify(f"delete failed: {e}", severity="error", timeout=3)
+                return
+            self.notify(f"moved to trash: {target.stem}", timeout=2)
+            self._all_files = sorted(
+                [f for f in SAVE_DIR.rglob("*.txt") if not f.name.startswith(".")],
+                key=lambda f: f.stat().st_mtime, reverse=True
+            )
+            self._tag_tree = build_tag_tree(self._all_files)
+            self._load_tags()
+            self._load_files(self._all_files)
+            new_len = len(list(fl.children))
+            if new_len > 0:
+                fl.index = min(idx, new_len - 1)
+        else:
+            self._pending_delete = (target, now + 5.0)
+            self.notify(f"delete {target.stem}? press d again within 5s", timeout=5)
+
+    def _move_to_trash(self, path: pathlib.Path) -> None:
+        trash = pathlib.Path.home() / ".Trash"
+        trash.mkdir(exist_ok=True)
+        dest = trash / path.name
+        counter = 1
+        while dest.exists():
+            dest = trash / f"{path.stem} {counter}{path.suffix}"
+            counter += 1
+        shutil.move(str(path), str(dest))
 
 
 class WriterApp(App):
@@ -319,6 +376,7 @@ class WriterApp(App):
         self._dirty: bool = False
         self._search_visible = False
         self._last_keyword: str = ""
+        self._last_loaded_content: str = ""
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -356,7 +414,8 @@ class WriterApp(App):
         self.query_one("#statusbar", Label).update(f"  {fname}  ·  {count} chars  ·  {now}")
 
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
-        self._dirty = True
+        current = self.query_one("#editor", TextArea).text
+        self._dirty = current != self._last_loaded_content
         self._update_status()
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
@@ -370,6 +429,7 @@ class WriterApp(App):
             self._dirty = False
             editor = self.query_one("#editor", TextArea)
             editor.load_text(content)
+            self._last_loaded_content = content
             self.action_close_search()
             self._jump_to_keyword(content, self._last_keyword)
 
@@ -430,6 +490,7 @@ class WriterApp(App):
         self._current_file = None
         self._dirty = False
         self.query_one("#editor", TextArea).load_text("")
+        self._last_loaded_content = ""
         self.query_one("#editor").focus()
         self._update_status()
 
@@ -450,6 +511,7 @@ class WriterApp(App):
             name = name if name else datetime.now().strftime("%Y%m%d_%H%M%S")
             self._current_file = SAVE_DIR / f"{name}.txt"
         self._current_file.write_text(content, encoding="utf-8")
+        self._last_loaded_content = content
         self._dirty = False
         self._update_status()
         if not silent:
@@ -473,6 +535,7 @@ class WriterApp(App):
                 self._current_file = p
                 self._dirty = False
                 self.query_one("#editor", TextArea).load_text(content)
+                self._last_loaded_content = content
                 self.query_one("#editor").focus()
                 self._update_status()
         self.push_screen(FileListScreen(), handle)

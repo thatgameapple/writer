@@ -9,9 +9,9 @@ Just you, your words, and a black screen.
 没有预览，没有侧边栏，没有任何干扰。  
 只有你、你的文字，和一块纯黑的屏幕。
 
-![screenshot](https://raw.githubusercontent.com/thatgameapple/writer/main/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/thatgameapple/purple-soul/main/screenshot.png)
 
-![screenshot2](https://raw.githubusercontent.com/thatgameapple/writer/main/screenshot2.png)
+![screenshot2](https://raw.githubusercontent.com/thatgameapple/purple-soul/main/screenshot2.png)
 
 ---
 
@@ -64,6 +64,7 @@ purple-soul
 | `Tab` | 在标签栏和文件栏之间切换焦点 |
 | `Enter` | 打开选中的文件 |
 | `P` | 置顶 / 取消置顶当前标签（仅在标签栏有效） |
+| `D` | 删除当前文件（仅在文件栏有效，需 5 秒内连按两次确认，删除后移到系统回收站） |
 | `Esc` | 关闭列表 |
 
 ---
